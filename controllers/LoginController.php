@@ -11,16 +11,45 @@ class LoginController
 
     public static function login(Router $router)
     {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        }
+        $alertas = [];
 
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $usuario = new Usuario($_POST);
+            $alertas = $usuario->validarLogin();
+
+            if (empty($alertas)) {
+                $usuario = Usuario::where('email', $usuario->email);
+
+                if (!$usuario || !$usuario->confirmado) {
+                    Usuario::setAlerta('error', 'El usuario no existe o no está confirmado');
+                } else {
+                    if (password_verify($_POST['password'], $usuario->password)) {
+                        session_start();
+                        $_SESSION['id'] = $usuario->id;
+                        $_SESSION['nombre'] = $usuario->nombre;
+                        $_SESSION['email'] = $usuario->email;
+                        $_SESSION['login'] = true;
+
+                        header('Location: /proyectos');
+                    } else {
+                        Usuario::setAlerta('error', 'Contraseña incorrecta');
+                    }
+                }
+            }
+        }
+        $alertas = Usuario::getAlertas();
         $router->render('auth/login', [
             'titulo' => 'Iniciar Sesión',
-            'tagline' => 'Crea y Administra tus Proyectos'
+            'tagline' => 'Crea y Administra tus Proyectos',
+            'alertas' => $alertas
         ]);
     }
 
-    public static function logout() {}
+    public static function logout() 
+    {
+        $_SESSION = [];
+        header('Location: /');
+    }
 
     public static function crear(Router $router)
     {
@@ -73,15 +102,15 @@ class LoginController
     {
         $alertas = [];
 
-        if($_SERVER['REQUEST_METHOD'] === 'POST') {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $usuario = new Usuario($_POST);
             $alertas = $usuario->validarEmail();
 
-            if(empty($alertas)) {
+            if (empty($alertas)) {
                 // Buscar el usuario
                 $usuario = Usuario::where('email', $usuario->email);
 
-                if($usuario && $usuario->confirmado === '1') {
+                if ($usuario && $usuario->confirmado === '1') {
 
                     // Generar un nuevo token
                     $usuario->crearToken();
@@ -91,7 +120,7 @@ class LoginController
                     $usuario->guardar();
 
                     // Enviar el email
-                    $email = new Email( $usuario->email, $usuario->nombre, $usuario->token );
+                    $email = new Email($usuario->email, $usuario->nombre, $usuario->token);
                     $email->enviarInstrucciones();
 
                     // Imprimir la alerta
@@ -137,7 +166,6 @@ class LoginController
                 if ($resultado) {
                     header('Location: /');
                 }
-                
             }
         }
 
