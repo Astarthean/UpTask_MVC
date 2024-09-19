@@ -71,23 +71,83 @@ class LoginController
 
     public static function olvide(Router $router)
     {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $alertas = [];
+
+        if($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $usuario = new Usuario($_POST);
+            $alertas = $usuario->validarEmail();
+
+            if(empty($alertas)) {
+                // Buscar el usuario
+                $usuario = Usuario::where('email', $usuario->email);
+
+                if($usuario && $usuario->confirmado === '1') {
+
+                    // Generar un nuevo token
+                    $usuario->crearToken();
+                    unset($usuario->password2);
+
+                    // Actualizar el usuario
+                    $usuario->guardar();
+
+                    // Enviar el email
+                    $email = new Email( $usuario->email, $usuario->nombre, $usuario->token );
+                    $email->enviarInstrucciones();
+
+                    // Imprimir la alerta
+                    Usuario::setAlerta('exito', 'Hemos enviado las instrucciones a tu email');
+                } else {
+                    Usuario::setAlerta('error', 'El Usuario no existe o no esta confirmado');
+                }
+            }
         }
+
+        $alertas = Usuario::getAlertas();
 
         $router->render('auth/olvide', [
             'titulo' => 'Olvidé mi Contraseña',
-            'tagline' => 'Crea y Administra tus Proyectos'
+            'tagline' => 'Crea y Administra tus Proyectos',
+            'alertas' => $alertas
         ]);
     }
 
     public static function restablecer(Router $router)
     {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $token = s($_GET['token']);
+        $mostrar = true;
+
+        if (!$token) header('Location: /');
+
+        $usuario = Usuario::where('token', $token);
+
+        if (empty($usuario)) {
+            Usuario::setAlerta('error', 'Token no válido');
+            $mostrar = false;
         }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $usuario->sincronizar($_POST);
+            $alertas = $usuario->validarPassword();
+
+            if (empty($alertas)) {
+                $usuario->hashPassword();
+                $usuario->token = null;
+                $resultado = $usuario->guardar();
+
+                if ($resultado) {
+                    header('Location: /');
+                }
+                
+            }
+        }
+
+        $alertas = Usuario::getAlertas();
 
         $router->render('auth/restablecer', [
             'titulo' => 'Restablecer Contraseña',
-            'tagline' => 'Crea y Administra tus Proyectos'
+            'tagline' => 'Crea y Administra tus Proyectos',
+            'alertas' => $alertas,
+            'mostrar' => $mostrar
         ]);
     }
 
