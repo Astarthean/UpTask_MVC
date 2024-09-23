@@ -12,6 +12,7 @@
 
     .principal {
         flex: 1;
+        overflow: scroll;
     }
 
     .contenido {
@@ -33,6 +34,13 @@
             font-size: 1.4rem;
             @include m.boton(v.$indigo, v.$blanco);
             
+        }
+    }
+
+    .enlace {
+        color: v.$indigo;
+        &:hover {
+            color: color.adjust(v.$indigo, $lightness: -20%);
         }
     }
 }

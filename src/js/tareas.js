@@ -214,7 +214,7 @@
                 method: 'POST',
                 body: datos
             })
-            
+
             const resultado = await respuesta.json()
 
             mostrarAlerta(

@@ -45,7 +45,7 @@ class LoginController
         ]);
     }
 
-    public static function logout() 
+    public static function logout()
     {
         $_SESSION = [];
         header('Location: /');
